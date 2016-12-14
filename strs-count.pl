@@ -9,7 +9,7 @@ my $lang;
 my $args = CmdArgs->declare(
   '0.1',
   use_cases => [
-    main => ['OPTIONS file:File', 'Script counts statistics for the specified source file.'],
+    main => ['OPTIONS files:File...', 'Script counts statistics for the specified source files.'],
   ],
   options => {
     c_lang => ['-c', 'C language.', sub { $lang = 'c' }],
@@ -21,37 +21,51 @@ my $args = CmdArgs->declare(
 );
 $args->parse;
 
-my $fname = $args->arg('file');
+my $st_uchars = 0;
+my $st_ulines = 0;
+my $st_tlines = 0;
+my $st_skspaces = 0;
+my $st_skcoms = 0;
 
-if (!$lang){
-  if ($fname =~ /\.(f|f77|f90|for|fdv)$/i){
-    $lang = 'fortran';
+for my $fname (@{$args->arg('files')}){
+
+  if (!$lang){
+    if ($fname =~ /\.(f|f77|f90|for|fdv)$/i){
+      $lang = 'fortran';
+    }
+    elsif ($fname =~ /\.(c|cdv|h|cpp)$/i){
+      $lang = 'c';
+    }
+    else {
+      die "ERROR: Cannot determine language for file '$fname'.".
+          " You should specify language (C or Fortran).\n";
+    }
   }
-  elsif ($fname =~ /\.(c|cdv|h|cpp)$/i){
-    $lang = 'c';
+
+  my $chars = 0;
+  my $lines = 0;
+  my $pline = 0;
+  my $lexer = "lexer::$lang"->new($fname);
+  while (defined ($_ = $lexer->get_word)){
+    #print "#$_#\n";
+    $chars += length $_;
+    my $l = $lexer->current_line;
+    $lines ++ if $l != $pline;
+    $pline = $l;
   }
-  else {
-    die "ERROR: you should specify language (C or Fortran).\n";
-  }
+
+  $st_uchars += $chars;
+  $st_ulines += $lines;
+  $st_tlines += $lexer->current_line;
+  $st_skspaces += $lexer->skipped_space_chars;
+  $st_skcoms += $lexer->skipped_comments_chars;
 }
 
-my $chars = 0;
-my $lines = 0;
-my $pline = 0;
-my $lexer = "lexer::$lang"->new($fname);
-while (defined ($_ = $lexer->get_word)){
-  #print "#$_#\n";
-  $chars += length $_;
-  my $l = $lexer->current_line;
-  $lines ++ if $l != $pline;
-  $pline = $l;
-}
-
-print "useful characters number = $chars\n";
-print "useful lines number = $lines\n";
-print "total lines number = ", $lexer->current_line, "\n";
-print "skipped space characters number = ", $lexer->skipped_space_chars, "\n";
-print "skipped comments characters number = ", $lexer->skipped_comments_chars, "\n";
+print "useful characters number = $st_uchars\n";
+print "useful lines number = $st_ulines\n";
+print "total lines number = $st_tlines\n";
+print "skipped space characters number = $st_skspaces\n";
+print "skipped comments characters number = $st_skcoms\n";
 
 
 
