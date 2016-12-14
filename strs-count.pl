@@ -56,7 +56,7 @@ for my $fname (@{$args->arg('files')}){
 
   $st_uchars += $chars;
   $st_ulines += $lines;
-  $st_tlines += $lexer->current_line;
+  $st_tlines += $lexer->current_line - ($lexer->current_column > 1 ? 0 : 1);
   $st_skspaces += $lexer->skipped_space_chars;
   $st_skcoms += $lexer->skipped_comments_chars;
 }
@@ -80,6 +80,7 @@ sub new
 }
 
 sub current_line { $_[0]{line} }
+sub current_column { $_[0]{column} }
 sub skipped_space_chars { $_[0]{space_chars} }
 sub skipped_comments_chars { $_[0]{comments_chars} }
 
@@ -182,8 +183,15 @@ sub m_skip_comments
   my $com = '';
   if ($_[0]->m_buf =~ s#^(//.*)##){
     ## single line comments // ##
-    $com .= $1;
     $_[0]{column} += length $1;
+    $com .= $1;
+    while ($com =~ /\\$/){
+      $_[0]->m_skip_newline;
+      last if !$_[0]->m_buf;
+      $_[0]{buf} =~ s/^(.*)//;
+      $_[0]{column} += length $1;
+      $com .= "\n".$1;
+    }
   }
   elsif ($_[0]{buf} =~ s#^(/\*)##){
     ## multiline comments /**/ ##
