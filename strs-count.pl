@@ -12,11 +12,14 @@ my $args = CmdArgs->declare(
     main => ['OPTIONS files:File...', 'Script counts statistics for the specified source files.'],
   ],
   options => {
-    c_lang => ['-c', 'C language.', sub { $lang = 'c' }],
-    fort_lang => ['-f', 'Fortran language.', sub { $lang = 'fortran' }],
+    c_lang => ['-c', 'Treat all files as they are written in C.', sub { $lang = 'c' }],
+    fort_fixed_lang => ['-ffixed', 'Treat all files as they are written in Fortran fixed format.',
+                        sub { $lang = 'fortran::fixed' }],
+    fort_free_lang => ['-ffree', 'Treat all files as they are written in Fortran free format.',
+                        sub { $lang = 'fortran::free' }],
   },
   restrictions => [
-    'c_lang|fort_lang'
+    'c_lang|fort_fixed_lang|fort_free_lang'
   ],
 );
 $args->parse;
@@ -30,8 +33,11 @@ my $st_skcoms = 0;
 for my $fname (@{$args->arg('files')}){
 
   if (!$lang){
-    if ($fname =~ /\.(f|f77|f90|for|fdv)$/i){
-      $lang = 'fortran';
+    if ($fname =~ /\.(f|for|fpp|ftn|fdv)$/i){
+      $lang = 'fortran::fixed';
+    }
+    elsif ($fname =~ /\.(f90|f95|f03|f08)$/i){
+      $lang = 'fortran::free';
     }
     elsif ($fname =~ /\.(c|cdv|h|cpp)$/i){
       $lang = 'c';
@@ -47,7 +53,7 @@ for my $fname (@{$args->arg('files')}){
   my $pline = 0;
   my $lexer = "lexer::$lang"->new($fname);
   while (defined ($_ = $lexer->get_word)){
-    #print "#$_#\n";
+    #print "word #$_#\n";
     $chars += length $_;
     my $l = $lexer->current_line;
     $lines ++ if $l != $pline;
@@ -205,6 +211,59 @@ sub m_skip_comments
       }
       $com .= $_[0]->m_cut_buf;
     }
+  }
+  #print "comments: |$_|\n" for split /\n/, $com;
+  $_[0]{comments_chars} += length $com;
+  $com
+}
+
+package lexer::fortran::fixed;
+use base qw(lexer);
+
+sub m_read_line
+{
+  my $f = $_[0]{file};
+  my $l = <$f>;
+  return 0 unless defined $l;
+  if (length $l > 72){
+    $_[0]{comments_chars} += length($l) - 72;
+    #print "comments: ", substr($l, 72), "\n";
+    $l = substr($l, 0, 72)."\n";
+  }
+  $_[0]{buf} .= $l;
+  1
+}
+
+sub m_skip_comments
+{
+  return 0 if !$_[0]{skip_comments};
+  my $com = '';
+  if ($_[0]{column} == 1 && $_[0]->m_buf =~ s#^((c|\*).*)##i){
+    ## line comments C/* ##
+    $com .= $1;
+    $_[0]{column} += length $1;
+  }
+  elsif ($_[0]->m_buf =~ s#^(!.*)##){
+    ## line comments ! ##
+    $com .= $1;
+    $_[0]{column} += length $1;
+  }
+  #print "comments: |$_|\n" for split /\n/, $com;
+  $_[0]{comments_chars} += length $com;
+  $com
+}
+
+package lexer::fortran::free;
+use base qw(lexer);
+
+sub m_skip_comments
+{
+  return 0 if !$_[0]{skip_comments};
+  my $com = '';
+  if ($_[0]->m_buf =~ s#^(!.*)##){
+    ## line comments ! ##
+    $com .= $1;
+    $_[0]{column} += length $1;
   }
   #print "comments: |$_|\n" for split /\n/, $com;
   $_[0]{comments_chars} += length $com;
