@@ -82,6 +82,7 @@ sub m_init
   $self->{fname} = $fname;
   $self->{file} = FileHandle->new('<'.$fname) or die "can not open file $fname: $!\n";
   $self->{line} = 1;
+  $self->{column} = 1;
   $self->{skip_spaces} = 1;
   $self->{skip_comments} = 1;
   $self->{space_chars} = 0;
@@ -111,13 +112,26 @@ sub m_skip_spaces
   return 0 if !$_[0]{skip_spaces};
   my $ret = 0;
   $ret += length $1 while $_[0]->m_buf && $_[0]{buf}=~s/^((\t| )+)//;
-  $_[0]->{space_chars} += $ret;
+  $_[0]{space_chars} += $ret;
+  $_[0]{column} += $ret;
   $ret
 }
 
 sub m_skip_newline
 {
-  $_[0]->m_buf =~ s/^\r?\n// ? $_[0]{line}++ : 0
+  return 0 unless $_[0]->m_buf =~ s/^\r?\n//;
+  $_[0]{line}++;
+  $_[0]{column} = 1;
+  1
+}
+
+sub m_cut_buf
+{
+  my $ret = $_[0]{buf};
+  $_[0]{buf} = '';
+  $_[0]{line}++;
+  $_[0]{column} = 1;
+  $ret
 }
 
 sub m_get_string
@@ -125,14 +139,15 @@ sub m_get_string
   my $ret;
   if ($_[0]->m_buf =~ s/^('|")//){
     my $b = $1;
+    $_[0]{column} += length $1;
     $ret = $b;
     while ($_[0]->m_buf){
       if ($_[0]{buf} =~ s/^(([^$b\\]|\\.)*$b)//){
         $ret .= $1;
+        $_[0]{column} += length $1;
         last;
       }
-      $ret .= $_[0]{buf};
-      $_[0]{buf} = '';
+      $ret .= $_[0]->m_cut_buf;
     }
   }
   $ret
@@ -140,7 +155,7 @@ sub m_get_string
 
 sub m_get_word
 {
-  $_[0]->m_buf =~ s/^(.\w*)//;
+  $_[0]{column} += length $1 if $_[0]->m_buf =~ s/^(.\w*)//;
   $1
 }
 
@@ -151,20 +166,25 @@ sub m_skip_comments
 {
   return 0 if !$_[0]{skip_comments};
   my $com = '';
-  $com .= $1 while $_[0]->m_buf =~ s#^(//.*)##;
-  if ($_[0]{buf} && ($_[0]{buf} =~ s#^(/\*)##)){
+  if ($_[0]->m_buf =~ s#^(//.*)##){
+    ## single line comments // ##
     $com .= $1;
+    $_[0]{column} += length $1;
+  }
+  elsif ($_[0]{buf} =~ s#^(/\*)##){
+    ## multiline comments /**/ ##
+    $com .= $1;
+    $_[0]{column} += length $1;
     while ($_[0]->m_buf){
       if ($_[0]{buf} =~ s#^(([^\\]|\\.)*\*/)##){
         $com .= $1;
+        $_[0]{column} += length $1;
         last;
       }
-      $com .= $_[0]{buf};
-      $_[0]{buf} = '';
-      $_[0]{line}++;
+      $com .= $_[0]->m_cut_buf;
     }
   }
-  #print "comment: |$_|\n" for split /\n/, $com;
+  #print "comments: |$_|\n" for split /\n/, $com;
   $_[0]{comments_chars} += length $com;
   $com
 }
