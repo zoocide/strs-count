@@ -7,7 +7,7 @@ use CmdArgs::BasicTypes;
 my $lang;
 
 my $args = CmdArgs->declare(
-  '0.1',
+  '1.0',
   use_cases => [
     main => ['OPTIONS files:File...', 'Script counts statistics for the specified source files.'],
   ],
