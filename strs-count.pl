@@ -5,6 +5,7 @@ use CmdArgs;
 use CmdArgs::BasicTypes;
 
 my $gl_lang;
+my $verbose;
 
 my $args = CmdArgs->declare(
   '1.0',
@@ -17,6 +18,7 @@ my $args = CmdArgs->declare(
                         sub { $gl_lang = 'fortran::fixed' }],
     fort_free_lang => ['-ffree', 'Treat all files as they are written in Fortran free format.',
                         sub { $gl_lang = 'fortran::free' }],
+    verbose => ['-v', 'Print information for each file.', \$verbose],
   },
   restrictions => [
     'c_lang|fort_fixed_lang|fort_free_lang'
@@ -61,11 +63,23 @@ for my $fname (@{$args->arg('files')}){
     $pline = $l;
   }
 
-  $st_uchars += $chars;
-  $st_ulines += $lines;
-  $st_tlines += $lexer->current_line - ($lexer->current_column > 1 ? 0 : 1);
-  $st_skspaces += $lexer->skipped_space_chars;
-  $st_skcoms += $lexer->skipped_comments_chars;
+  my ($uc, $ul, $tl, $ss, $sc);
+  $st_uchars += $uc = $chars;
+  $st_ulines += $ul = $lines;
+  $st_tlines += $tl = $lexer->current_line - ($lexer->current_column > 1 ? 0 : 1);
+  $st_skspaces += $ss = $lexer->skipped_space_chars;
+  $st_skcoms += $sc = $lexer->skipped_comments_chars;
+  if ($verbose){
+    format STDOUT_TOP =
+  file format        uc       ul       tl       ss       sc   filename
+.
+    format STDOUT =
+@|||||||||||||| @####### @####### @####### @####### @####### @*
+    $lang,       $uc,     $ul,     $tl,     $ss,     $sc,     $fname
+.
+    #print("$lang $uc $ul $tl $ss $sc\t$fname\n");
+    write;
+  }
 }
 
 print "useful characters number = $st_uchars\n";
@@ -73,7 +87,6 @@ print "useful lines number = $st_ulines\n";
 print "total lines number = $st_tlines\n";
 print "skipped space characters number = $st_skspaces\n";
 print "skipped comments characters number = $st_skcoms\n";
-
 
 
 package lexer;
