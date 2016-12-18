@@ -185,7 +185,7 @@ use base qw(lexer);
 
 sub m_skip_comments
 {
-  return 0 if !$_[0]{skip_comments};
+  return '' if !$_[0]{skip_comments};
   my $com = '';
   if ($_[0]->m_buf =~ s#^(//.*)##){
     ## single line comments // ##
@@ -236,7 +236,7 @@ sub m_read_line
 
 sub m_skip_comments
 {
-  return 0 if !$_[0]{skip_comments};
+  return '' if !$_[0]{skip_comments};
   my $com = '';
   if ($_[0]{column} == 1 && $_[0]->m_buf =~ s#^((c|\*).*)##i){
     ## line comments C/* ##
@@ -258,7 +258,7 @@ use base qw(lexer);
 
 sub m_skip_comments
 {
-  return 0 if !$_[0]{skip_comments};
+  return '' if !$_[0]{skip_comments};
   my $com = '';
   if ($_[0]->m_buf =~ s#^(!.*)##){
     ## line comments ! ##
