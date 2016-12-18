@@ -238,6 +238,9 @@ sub m_skip_comments
 {
   return '' if !$_[0]{skip_comments};
   my $com = '';
+  ## do not skip pragmas ##
+  return '' if $_[0]{column} == 1 && $_[0]->m_buf =~ /^(c|\*|!)(dvm\$|\$omp)/i;
+
   if ($_[0]{column} == 1 && $_[0]->m_buf =~ s#^((c|\*).*)##i){
     ## line comments C/* ##
     $com .= $1;
@@ -260,6 +263,9 @@ sub m_skip_comments
 {
   return '' if !$_[0]{skip_comments};
   my $com = '';
+  ## do not skip pragmas ##
+  return '' if $_[0]->m_buf =~ /^!(dvm\$|\$omp)/i;
+
   if ($_[0]->m_buf =~ s#^(!.*)##){
     ## line comments ! ##
     $com .= $1;
