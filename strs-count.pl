@@ -4,7 +4,7 @@ use FileHandle;
 use CmdArgs;
 use CmdArgs::BasicTypes;
 
-my $lang;
+my $gl_lang;
 
 my $args = CmdArgs->declare(
   '1.0',
@@ -12,11 +12,11 @@ my $args = CmdArgs->declare(
     main => ['OPTIONS files:File...', 'Script counts statistics for the specified source files.'],
   ],
   options => {
-    c_lang => ['-c', 'Treat all files as they are written in C.', sub { $lang = 'c' }],
+    c_lang => ['-c', 'Treat all files as they are written in C.', sub { $gl_lang = 'c' }],
     fort_fixed_lang => ['-ffixed', 'Treat all files as they are written in Fortran fixed format.',
-                        sub { $lang = 'fortran::fixed' }],
+                        sub { $gl_lang = 'fortran::fixed' }],
     fort_free_lang => ['-ffree', 'Treat all files as they are written in Fortran free format.',
-                        sub { $lang = 'fortran::free' }],
+                        sub { $gl_lang = 'fortran::free' }],
   },
   restrictions => [
     'c_lang|fort_fixed_lang|fort_free_lang'
@@ -31,6 +31,7 @@ my $st_skspaces = 0;
 my $st_skcoms = 0;
 
 for my $fname (@{$args->arg('files')}){
+  my $lang = $gl_lang;
 
   if (!$lang){
     if ($fname =~ /\.(f|for|fpp|ftn|fdv)$/i){
