@@ -2,7 +2,6 @@
 use strict;
 use FileHandle;
 use CmdArgs;
-use CmdArgs::BasicTypes;
 
 my $gl_lang;
 my $verbose;
@@ -10,7 +9,7 @@ my $verbose;
 my $args = CmdArgs->declare(
   '1.0',
   use_cases => [
-    main => ['OPTIONS files:File...', 'Script counts statistics for the specified source files.'],
+    main => ['OPTIONS files:...', 'Script counts statistics for the specified source files.'],
   ],
   options => {
     c_lang => ['-c', 'Treat all files as they are written in C.', sub { $gl_lang = 'c' }],
@@ -32,7 +31,8 @@ my $st_tlines = 0;
 my $st_skspaces = 0;
 my $st_skcoms = 0;
 
-for my $fname (@{$args->arg('files')}){
+my @files = map glob($_), @{$args->arg('files')};
+for my $fname (@files){
   my $lang = $gl_lang;
 
   if (!$lang){
